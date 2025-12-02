@@ -15,23 +15,57 @@ def connect():
     sql_counter = 0
     max_retries = 3
     my_ip = get_ip_address()
+    # Driver preference: try ODBC 18 first (container installs 18), then 17 as fallback
+    drivers = [
+        "ODBC Driver 18 for SQL Server",
+        "ODBC Driver 17 for SQL Server",
+    ]
+
+    # Encryption flags (ODBC 18 defaults to Encrypt=yes). Allow override via .env
+    encrypt = os.getenv("ENCRYPT", "no")  # yes/no or true/false
+    tsc = os.getenv("TSC", "no")  # TrustServerCertificate
 
     for attempt in range(max_retries + 1):
         try:
-            cnxn = f"""DRIVER={{ODBC Driver 17 for SQL Server}};
-                                                 Server={os.getenv('SQL_SERVER')};
-                                                 UID={os.getenv('UID')};
-                                                 PWD={os.getenv('SQL_PWD')};
-                                                 Database={os.getenv('DATABASE')};
-                                                 TrustServerCertificate={os.getenv('TSC')}"""
-            connection_string = cnxn
-            connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
-            engine = create_engine(connection_url)
+            # Build a connection string trying preferred drivers in order
+            last_error = None
+            engine = None
+            for drv in drivers:
+                cnxn = (
+                    f"DRIVER={{{drv}}};"
+                    f"Server={os.getenv('SQL_SERVER')};"
+                    f"UID={os.getenv('UID')};"
+                    f"PWD={os.getenv('SQL_PWD')};"
+                    f"Database={os.getenv('DATABASE')};"
+                    f"Encrypt={encrypt};"
+                    f"TrustServerCertificate={tsc}"
+                )
+                connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": cnxn})
+                try:
+                    engine = create_engine(connection_url)
+                    # Proactively test the connection so we fail fast here
+                    with engine.connect() as conn:
+                        pass
+                    break  # success
+                except Exception as e:
+                    last_error = e
+                    engine = None
+                    continue
+            if engine is None and last_error:
+                raise last_error
             return engine
         except pyodbc.OperationalError:
             if attempt < max_retries:
                 print(f"\r🔴: (SQL) Connection failed on attempt {attempt + 1}. Retrying...", end='')
                 time.sleep(2)  # Μικρή καθυστέρηση πριν την επόμενη προσπάθεια
+            else:
+                print(f"\r🔴: (!SQL!) Working Remotely: My IP ADDRESS is {my_ip}", end='')
+                return open_vpn(sql_counter)
+        except Exception:
+            # Treat any other exception similarly to OperationalError for retry logic
+            if attempt < max_retries:
+                print(f"\r🔴: (SQL) Connection initialization error on attempt {attempt + 1}. Retrying...", end='')
+                time.sleep(2)
             else:
                 print(f"\r🔴: (!SQL!) Working Remotely: My IP ADDRESS is {my_ip}", end='')
                 return open_vpn(sql_counter)

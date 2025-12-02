@@ -1,10 +1,10 @@
 # ECOS Dockerfile
 # - Python slim base
-# - Installs Microsoft ODBC Driver 17 for SQL Server (msodbcsql17)
+# - Installs Microsoft ODBC Driver 18 for SQL Server (msodbcsql18)
 # - Installs unixODBC for pyodbc runtime (and -dev for builds when needed)
 # - Runs FastAPI app with Uvicorn on port 8000
 
-FROM python:3.11-slim-bullseye
+FROM python:3.11-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -12,15 +12,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System dependencies and Microsoft ODBC Driver 17 for SQL Server
+# System dependencies and Microsoft ODBC Driver 18 for SQL Server
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       curl gnupg2 apt-transport-https ca-certificates \
+       curl gnupg ca-certificates apt-transport-https \
        unixodbc unixodbc-dev build-essential \
-    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql17 \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project files

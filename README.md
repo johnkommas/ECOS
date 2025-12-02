@@ -18,9 +18,9 @@ This tool is intended for Dedicated Server installations of Entersoft only. It r
 ### Prerequisites
 
 - Python 3.10+
-- Microsoft ODBC Driver 17 for SQL Server (required by `pyodbc`)
-  - macOS: follow Microsoft docs to install ODBC 17 (Homebrew can be used for unixODBC)
-  - Windows: install the official ODBC 17 package
+- Microsoft ODBC Driver 18 for SQL Server (required by `pyodbc`; 17 works as fallback)
+  - macOS: follow Microsoft docs to install ODBC 18 (Homebrew can be used for unixODBC)
+  - Windows: install the official ODBC 18 package
 - Network reachability to the SQL Server (LAN or VPN)
 
 Optional (macOS only): If you wish to use the automatic VPN dialer, the code expects a macOS network service named `VPN`. See “Optional: auto‑VPN (macOS)” below.
@@ -69,6 +69,7 @@ UID=sa                        # SQL login
 SQL_PWD=yourStrong(!)Passw0rd # SQL password
 DATABASE=ENTER_SOFT_DB        # Target database name
 TSC=yes                       # TrustServerCertificate (yes/no or true/false)
+ENCRYPT=no                    # ODBC encryption flag (ODBC 18 defaults to yes). Set yes if your server supports it.
 SQL_COMPANY_CODE=002          # Company code used by your procedures
 
 # Optional: used only for macOS auto‑VPN (see below)
@@ -78,6 +79,8 @@ IP_EM_ROUTER=10.0.0.1         # VPN router/gateway IP (ping check)
 
 Environment variable usage:
 - `SQL/sql_connect.py` reads the variables to build an ODBC connection string via SQLAlchemy + `pyodbc`.
+- Driver selection prefers ODBC 18, falling back to 17 if unavailable.
+- `ENCRYPT` controls the `Encrypt` setting (ODBC 18 defaults to `Encrypt=yes`; for on‑prem without certificates you may use `no` together with `TSC=yes`).
 - `TSC` controls `TrustServerCertificate` in the ODBC string.
 - `IP_EM` and `IP_EM_ROUTER` are only used on macOS for optional, automatic VPN handling.
 
@@ -118,7 +121,7 @@ The app is intentionally minimal and executes only known, controlled SQL scripts
 
 - Dedicated server installations only. The tool assumes you control the database and network.
 - Local use. Run the tool on a trusted machine within the office LAN or over a secure VPN. Do not expose it to the public internet.
-- SQL Server only (via ODBC 17). Other RDBMS engines are not supported.
+- SQL Server only (via ODBC 18, with 17 fallback). Other RDBMS engines are not supported.
 
 ---
 
@@ -140,12 +143,12 @@ If you do not need this feature, simply leave those variables unset; the app wil
 ### Troubleshooting
 
 - ODBC driver errors (e.g., “Data source name not found”):
-  - Verify Microsoft ODBC Driver 17 for SQL Server is installed and discoverable by `pyodbc`.
+  - Verify Microsoft ODBC Driver 18 for SQL Server is installed and discoverable by `pyodbc` (17 can work as a fallback).
   - On macOS, ensure `unixODBC` is installed and driver paths are correct.
 
 - Authentication/SSL issues:
   - Check `UID` / `SQL_PWD` / `DATABASE` in `.env`.
-  - Try setting `TSC=yes` to bypass certificate validation only if you trust the network.
+  - With ODBC 18, `Encrypt` often defaults to `yes`. If your server doesn’t support TLS, set `ENCRYPT=no` and (optionally) `TSC=yes` for trusted LAN/VPN setups.
 
 - Cannot reach SQL Server:
   - Confirm you’re on the same LAN or connected via VPN.
