@@ -1,6 +1,6 @@
 ### ECOS — Docker usage
 
-This document shows how to run ECOS (FastAPI app) in Docker. The image includes Microsoft ODBC Driver 17 for SQL Server (`msodbcsql17`) so `pyodbc` can connect to your SQL Server.
+This document shows how to run ECOS (FastAPI app) in Docker. The image includes Microsoft ODBC Driver 18 for SQL Server (`msodbcsql18`) so `pyodbc` can connect to your SQL Server.
 
 Important:
 - Provide your database settings via a local `.env` file (do not bake secrets into the image).
@@ -10,7 +10,7 @@ Important:
 
 ### Files provided
 
-- `Dockerfile` — Builds a production image on `python:3.11-slim-bullseye`, installs `msodbcsql17` and app dependencies, runs Uvicorn on port 8000.
+- `Dockerfile` — Builds a production image on `python:3.11-slim-bookworm`, installs `msodbcsql18` and app dependencies, runs Uvicorn on port 8000.
 - `docker-compose.yml` — One‑service stack mapping port `8000:8000`, loading env from `.env`, with a basic healthcheck.
 - `.dockerignore` — Excludes `.env`, VCS, caches, etc., from the image context.
 
@@ -26,10 +26,13 @@ UID=sa
 SQL_PWD=yourStrong(!)Passw0rd
 DATABASE=ENTER_SOFT_DB
 TSC=yes
+ENCRYPT=no
 SQL_COMPANY_CODE=002
 ```
 
-Note: The container must be able to reach `SQL_SERVER` over the network (LAN/VPN). The macOS auto‑VPN helper is not available inside the container.
+Notes:
+- The container must be able to reach `SQL_SERVER` over the network (LAN/VPN). The macOS auto‑VPN helper is not available inside the container.
+- With ODBC 18, encryption often defaults to `yes`. If your SQL Server does not use TLS, set `ENCRYPT=no` (together with `TSC=yes` on trusted LAN/VPN).
 
 ---
 
@@ -126,7 +129,7 @@ This will reflect code changes without rebuilding the image.
 ### 5) Troubleshooting
 
 - pyodbc / ODBC driver errors in container:
-  - The image installs `msodbcsql17` and `unixodbc`. If you still see driver errors, rebuild the image: `docker compose build --no-cache`.
+  - The image installs `msodbcsql18` (arm64/Apple Silicon friendly) and `unixodbc`. If you still see driver errors, rebuild the image: `docker compose build --no-cache`.
   - Ensure your SQL Server is reachable from the container network: `docker exec -it ecos ping -c 1 <SQL_SERVER>` (Linux-based images support `ping` only if `iputils-ping` exists; otherwise use `nc -vz <SQL_SERVER> 1433`).
 
 - Cannot connect over VPN:
