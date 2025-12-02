@@ -48,7 +48,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 There is no `requirements.txt` in the repo. Install the essentials directly:
 
 ```
-pip install fastapi uvicorn[standard] sqlalchemy pyodbc python-dotenv jinja2 pandas
+pip install fastapi python-multipart uvicorn[standard] sqlalchemy pyodbc python-dotenv jinja2 pandas
 ```
 
 Notes:

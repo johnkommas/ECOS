@@ -31,6 +31,7 @@ COPY . /app
 RUN pip install --upgrade pip \
     && pip install \
        fastapi \
+       python-multipart \
        "uvicorn[standard]" \
        sqlalchemy \
         pyodbc \
