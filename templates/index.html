@@ -1,0 +1,290 @@
+                            {% extends "base.html" %}
+
+{% block content %}
+
+<section class="search-section">
+    <form action="/search" method="post" class="search-form">
+        <label for="document" class="field-label">Document Code</label>
+        <div class="input-row">
+            <input type="text" id="document" name="document" required placeholder="e.g. APL-A-2448299" value="{{ card.document if card else '' }}">
+            <button type="submit" class="btn primary">Search</button>
+            <a href="/refresh" class="btn primary">Refresh</a>
+        </div>
+        <p class="hint">Enter the document code to check and possibly fix it.</p>
+    </form>
+</section>
+
+{% if auto_results is not none %}
+  <section class="results-section">
+    <div>
+      <div class="card-header">
+        <h2>Select Document from Auto Search
+          {% if auto_results and auto_results|length > 0 %}
+            <span class="muted caption ml-8">• found {{ auto_results|length }} options</span>
+          {% endif %}
+        </h2>
+      </div>
+      <div class="card-body">
+        {% if auto_results and auto_results|length > 0 %}
+          <ul class="list auto-grid">
+            {% for r in auto_results %}
+              <li>
+                <a class="btn {{ 'danger' if r.status == 0 else ('warn' if r.status == 2 else 'primary') }}" href="/search/{{ r.document }}" title="Status: {{ '0' if r.status == 0 else ('2' if r.status == 2 else (r.status if r.status is not none else '—')) }}">
+                  {{ r.document }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <span class="muted">No documents found from the auto search.</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+{% if card %}
+    <section class="results-section">
+        {% if card.result_found %}
+            <div class="result-card">
+                <div class="card-header">
+                    <h2>
+                        Result
+                        {% if card.checkpoints %}
+                          <span class="cp-sep">•</span>
+                          <span class="cp-inline">
+                            {% for cp in card.checkpoints %}
+                              <span
+                                class="cp-badge {{ 'pass' if cp.pass else 'fail' }}"
+                                tabindex="0"
+                                aria-label="{{ cp.message if cp.message else cp.label }}"
+                                data-tip="{{ cp.message if cp.message else '' }}"
+                              >{{ cp.label }}</span>
+                              {% if not loop.last %}<span class="cp-sep">•</span>{% endif %}
+                            {% endfor %}
+                          </span>
+                        {% endif %}
+                    </h2>
+                    {% if card.multiple %}
+                        <span class="badge warn">Multiple records</span>
+                    {% elif card.can_fix %}
+                        <span class="badge ok">Fixable</span>
+                    {% else %}
+                        
+                    {% endif %}
+                </div>
+
+
+                <div class="card-body">
+                    <div class="sections-grid">
+                    <!-- Basic Information -->
+                    <div class="kv-group basic-info">
+                        <div class="kv-title">Basic Information</div>
+                        <div class="kv-grid">
+                            {% for item in card.basic_info %}
+                                {% if item.value is not none and item.value != '' %}
+                                    <div class="kv-row {% if item.key == 'fDocumentGID' or item.label == 'AuthenticationCode' %}full-row{% endif %}{% if item.label == 'AuthenticationCode' %} stack{% endif %}">
+                                        <span class="k"><b>{{ item.label }}:</b></span>
+                                        <span class="v">{{ item.value }}</span>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Provider Information (2 boxes top, 1 bottom) -->
+                    <div class="kv-group provider">
+                        <div class="kv-title">Provider Information</div>
+                        <div class="provider-grid">
+                          <!-- Αριστερό κουτί: Λογότυπο, κεντραρισμένο -->
+                          <div class="prov-box logo-box">
+                            {% if card.row and card.row.get('ProviderName') == 'Impact' %}
+                              <img src="/images/impact.svg" alt="Impact" class="provider-logo" />
+                            {% endif %}
+                          </div>
+
+                          <!-- Δεξί κουτί: QR, επάνω δεξιά -->
+                          <div class="prov-box qr-box">
+                            {% if card.row and card.row.get('QRCode') %}
+                              {% if card.qr_data_url %}
+                                <img src="{{ card.qr_data_url }}" alt="QR Code" class="qr-img" />
+                              {% else %}
+                                <span class="muted">Invalid QR image</span>
+                              {% endif %}
+                            {% endif %}
+                          </div>
+
+                          <!-- Κάτω κουτί: Σύνδεσμος Παραστατικού πλήρους πλάτους -->
+                          <div class="prov-box link-box">
+                            {% set p = namespace(has_invoice=false) %}
+                            {% for item in card.provider_info %}
+                              {% if item.key == 'InvoiceURL' and item.value is not none and item.value != '' %}
+                                {% set p.has_invoice = true %}
+                                {% if item.is_link and item.href %}
+                                  <a href="{{ item.href }}" target="_blank" rel="noopener noreferrer" class="btn primary invoice-btn">
+                                    <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
+                                    <span>View Invoice</span>
+                                  </a>
+                                {% endif %}
+                              {% endif %}
+                            {% endfor %}
+                            {# myDATA check button based on MarkID #}
+                            {% if card.row and card.row.get('MarkID') %}
+                              {% set mark_id = card.row.get('MarkID') %}
+                              <a href="https://www1.aade.gr/saadeapps2/bookkeeper-web/bookkeeper/#!/invoiceSimple?retrType=FINV&retrId={{ mark_id }}"
+                                 target="_blank" rel="noopener noreferrer"
+                                 class="btn primary mydata-btn"
+                                 aria-label="myDATA check for MarkID {{ mark_id }}">
+                                <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+                                <span>Check myDATA</span>
+                              </a>
+                            {% endif %}
+
+                            {# Provider status text below buttons #}
+<!--                            <div class="provider-status">-->
+<!--                              <div>-->
+<!--                                Invoice link:-->
+<!--                                <strong>{{ 'Available' if p.has_invoice else 'Not provided' }}</strong>-->
+<!--                              </div>-->
+<!--                              <div>-->
+<!--                                myDATA:-->
+<!--                                {% if card.row and card.row.get('MarkID') %}-->
+<!--                                  <strong>MarkID {{ card.row.get('MarkID') }}</strong>-->
+<!--                                {% else %}-->
+<!--                                  <strong>Not provided</strong>-->
+<!--                                {% endif %}-->
+<!--                              </div>-->
+<!--                              <div>-->
+<!--                                QR:-->
+<!--                                {% if card.qr_data_url %}-->
+<!--                                  <strong>Available</strong>-->
+<!--                                {% elif card.row and card.row.get('QRCode') %}-->
+<!--                                  <strong>Invalid image</strong>-->
+<!--                                {% else %}-->
+<!--                                  <strong>Not provided</strong>-->
+<!--                                {% endif %}-->
+<!--                              </div>-->
+<!--                            </div>-->
+                            {% if card.row and card.row.get('StatusText') %}
+                              <div class="provider-statustext" title="StatusText">
+                                {{ card.row.get('StatusText') }}
+                              </div>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+
+                    <!-- User Information (bottom left) -->
+                    <div class="kv-group user-info">
+                        <div class="kv-title">User Information</div>
+                        <div class="user-card">
+                            {% set ns = namespace(user_name=None, user_time=None) %}
+                            {% for item in card.user_info %}
+                              {% if item.key == 'ESUCreated' %}{% set ns.user_name = item.value %}{% endif %}
+                              {% if item.key == 'ESDCreated' %}{% set ns.user_time = item.value %}{% endif %}
+                            {% endfor %}
+                            {% set uname_upper = (ns.user_name or '')|upper %}
+                            {% if ns.user_name and uname_upper == 'GIOTA' %}
+                              <div class="avatar img-avatar" aria-hidden="true">
+                                <img src="/images/GIOTA.jpg" alt="Avatar" class="avatar-img" />
+                              </div>
+                            {% elif ns.user_name and uname_upper == 'KOUTOULAKI' %}
+                              <div class="avatar img-avatar" aria-hidden="true">
+                                <img src="/images/KOUTOULAKI.jpg" alt="Avatar" class="avatar-img" />
+                              </div>
+                            {% elif ns.user_name and uname_upper == 'XNARAKI' %}
+                              <div class="avatar img-avatar" aria-hidden="true">
+                                <img src="/images/XNARAKI.png" alt="Avatar" class="avatar-img" />
+                              </div>
+                            {% else %}
+                              <div class="avatar" aria-hidden="true">
+                                  <i class="fa-solid fa-user"></i>
+                              </div>
+                            {% endif %}
+                            {% if card.user_date %}
+                              <div class="date-badge" aria-hidden="true">
+                                <div class="day">{{ card.user_date.day }}</div>
+                                <div class="mon">{{ card.user_date.month }}</div>
+                              </div>
+                            {% endif %}
+                            <div class="user-meta">
+                                <div class="user-name">{{ ns.user_name or 'Unknown User' }}</div>
+                                {% if ns.user_time %}
+                                  <div class="user-ts">Logged: {{ ns.user_time }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Price Information (bottom right) -->
+                    <div class="kv-group price-info">
+                        <div class="kv-title">Price Information</div>
+                        {% set ns2 = namespace(net=None, vat=None, total=None) %}
+                        {% for item in card.price_info %}
+                          {% if item.key in ['CurrencyNetValue','ADNetValue','NetValue'] %}{% set ns2.net = item.value %}{% endif %}
+                          {% if item.key in ['CurrencyVATValue','ADVATValue','VATValue','VatValue'] %}{% set ns2.vat = item.value %}{% endif %}
+                          {% if item.key in ['CurrencyTotalValue','ADTotalValue','TotalValue'] %}{% set ns2.total = item.value %}{% endif %}
+                        {% endfor %}
+                        <div class="price-table" aria-label="Price Information">
+                            {% if card.payment %}
+                              <div class="row">
+                                <div class="label">Payment Method</div>
+                                <div class="amount" style="display:flex; align-items:center; gap:8px; justify-content:flex-end;">
+                                  {% if card.payment.code == 'ΜΕΤ' %}
+                                    <img src="/images/icons/cash.png" alt="Cash" class="icon-pay" title="{{ card.payment.display }}" />
+                                  {% elif card.payment.code == 'ΠΚΑ' %}
+                                    <img src="/images/icons/card.png" alt="Credit Card" class="icon-pay" title="{{ card.payment.display }}" />
+                                  {% else %}
+                                    <span class="muted" title="{{ card.payment.display }}">—</span>
+                                  {% endif %}
+                                </div>
+                              </div>
+                              {% if card.payment.code == 'ΠΚΑ' and card.payment.auth_id %}
+                              <div class="row">
+                                <div class="label">Authorization Code</div>
+                                <div class="amount">{{ card.payment.auth_id }}</div>
+                              </div>
+                              {% endif %}
+                            {% endif %}
+                            <div class="row">
+                                <div class="label">Net Amount</div>
+                                <div class="amount">{{ ns2.net or '0,00' }} €</div>
+                            </div>
+                            <div class="row">
+                                <div class="label">VAT Amount</div>
+                                <div class="amount">{{ ns2.vat or '0,00' }} €</div>
+                            </div>
+
+                            <div class="row total">
+                                <div class="label">Total</div>
+                                <div class="amount">{{ ns2.total or '0,00' }} €</div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+
+                    {% if card.status_message %}
+                        <div class="info" style="margin-top:10px;">{{ card.status_message }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="card-actions">
+                    <form action="/fix" method="post">
+                        <input type="hidden" name="document" value="{{ card.document }}">
+                        <button type="submit" class="btn success" {% if not card.can_fix %}disabled{% endif %}>
+                            Fix
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% else %}
+            <div class="card result-card">
+                <div class="card-body">
+                    <div class="info">{{ card.status_message }}</div>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+{% endif %}
+ 
+{% endblock %}

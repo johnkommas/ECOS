@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECOS • Document Fix Tool</title>
+    <!-- Elegant global font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        // Early theme resolver (supports 'light' | 'dark' | 'auto') to avoid FOUC
+        (function(){
+          try {
+            var pref = localStorage.getItem('themePref');
+            // Backward compatibility: migrate old 'theme' if pref not set
+            if(!pref){
+              var old = localStorage.getItem('theme');
+              if(old === 'light' || old === 'dark'){ pref = old; localStorage.setItem('themePref', pref); }
+            }
+            if(!pref) pref = 'auto';
+            var resolved = pref === 'auto'
+              ? ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light')
+              : pref;
+            document.documentElement.setAttribute('data-theme', resolved);
+            // expose early for inline handlers
+            window.__themePref = pref;
+          } catch(e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+        })();
+    </script>
+    <link rel="stylesheet" href="/static/styles.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+</head>
+<body>
+<header class="site-header">
+    <div class="header-inner">
+        <div class="brand">
+            <img src="/images/SOFTONE-EINVOICING.svg" alt="Logo" class="logo">
+            <div class="brand-text">
+                <h1>ECOS</h1>
+                <p class="subtitle">Document Fix Tool</p>
+            </div>
+        </div>
+        <div class="color-scheme-toggle" id="colorSchemeToggle" role="radiogroup" tabindex="0" aria-label="Select a color scheme preference">
+          <span class="noise" aria-hidden="true"></span>
+          <div class="toggle-thumb" aria-hidden="true"></div>
+
+          <label data-color-scheme-option="light">
+            <input type="radio" name="color-scheme" value="light" autocomplete="off" onchange="window.setPreferredColorScheme(event.target.value)">
+            <div class="text">Light</div>
+          </label>
+
+          <label data-color-scheme-option="dark">
+            <input type="radio" name="color-scheme" value="dark" autocomplete="off" onchange="window.setPreferredColorScheme(event.target.value)">
+            <div class="text">Dark</div>
+          </label>
+
+          <label data-color-scheme-option="auto">
+            <input type="radio" name="color-scheme" value="auto" autocomplete="off" onchange="window.setPreferredColorScheme(event.target.value)">
+            <div class="text">Auto</div>
+          </label>
+        </div>
+    </div>
+    <div class="header-accent"></div>
+    <div class="header-shadow"></div>
+</header>
+
+<main class="container main-content">
+    {% block content %}{% endblock %}
+    {% if message %}
+        <div class="alert">
+            {{ message }}
+        </div>
+    {% endif %}
+</main>
+
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-left">
+            <img src="/images/Entersoftone.png" alt="Logo" class="logo small">
+        </div>
+        <div class="footer-center">
+            <i class="fa-solid fa-heart heart" aria-hidden="true"></i>
+            <span>Made with care</span>
+        </div>
+        <div class="footer-right">
+            <span>Copyright © 2025 Ioannis E. Kommas. All rights reserved</span>
+        </div>
+    </div>
+    
+</footer>
+<script>
+  // Tri‑state color scheme controller
+  (function(){
+    var group = document.getElementById('colorSchemeToggle');
+    var thumb = group && group.querySelector('.toggle-thumb');
+    var radios = group ? Array.prototype.slice.call(group.querySelectorAll('input[type="radio"][name="color-scheme"]')) : [];
+    var mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+    function resolveTheme(pref){
+      return pref === 'auto' ? (mql && mql.matches ? 'dark' : 'light') : pref;
+    }
+
+    function apply(pref){
+      var resolved = resolveTheme(pref);
+      document.documentElement.setAttribute('data-theme', resolved);
+      try { localStorage.setItem('themePref', pref); } catch(e){}
+      window.__themePref = pref;
+    }
+
+    function syncRadios(pref){
+      radios.forEach(function(r){ r.checked = (r.value === pref); });
+    }
+
+    function refreshThumb(){
+      if(!group || !thumb) return;
+      var pref = window.__themePref || 'auto';
+      // find checked label
+      var checked = group.querySelector('input[type="radio"]:checked');
+      var label = checked ? checked.parentElement : null;
+      if(!label){ label = group.querySelector('label[data-color-scheme-option="'+pref+'"]'); }
+      if(!label){ return; }
+      var gb = group.getBoundingClientRect();
+      var lb = label.getBoundingClientRect();
+      var pad = 2; // same as CSS inset
+      var width = Math.round(lb.width);
+      var tx = Math.round((lb.left - gb.left));
+      thumb.style.width = width + 'px';
+      thumb.style.transform = 'translateX(' + tx + 'px)';
+    }
+
+    window.setPreferredColorScheme = function(value){
+      var pref = (value === 'light' || value === 'dark' || value === 'auto') ? value : 'auto';
+      apply(pref);
+      syncRadios(pref);
+      refreshThumb();
+    };
+
+    function init(){
+      var pref = window.__themePref || 'auto';
+      // default to auto if missing/invalid
+      if(['light','dark','auto'].indexOf(pref) === -1){ pref = 'auto'; }
+      apply(pref);
+      syncRadios(pref);
+      refreshThumb();
+      // Respond to system changes when in auto
+      if(mql){
+        try{ mql.addEventListener('change', function(){ if((window.__themePref||'auto') === 'auto'){ apply('auto'); refreshThumb(); } }); }
+        catch(e){ mql.addListener && mql.addListener(function(){ if((window.__themePref||'auto') === 'auto'){ apply('auto'); refreshThumb(); } }); }
+      }
+      // Resize updates
+      window.addEventListener('resize', refreshThumb);
+      // Keyboard navigation
+      group && group.addEventListener('keydown', function(ev){
+        if(ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+        ev.preventDefault();
+        var idx = radios.findIndex(function(r){ return r.checked; });
+        if(idx < 0) idx = 0;
+        var next = ev.key === 'ArrowRight' ? (idx + 1) % radios.length : (idx - 1 + radios.length) % radios.length;
+        var target = radios[next];
+        if(target){ target.checked = true; window.setPreferredColorScheme(target.value); target.focus(); }
+      });
+    }
+
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', init);
+    } else { init(); }
+  })();
+</script>
+</body>
+</html>
