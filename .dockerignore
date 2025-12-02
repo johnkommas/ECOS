@@ -1,0 +1,17 @@
+# Prevent sensitive or unnecessary files from being copied into the image
+.git
+.gitignore
+.env
+.env.*
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+dist
+build
+*.log
+.DS_Store
+Thumbs.db
