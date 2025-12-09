@@ -11,7 +11,13 @@ from fastapi.templating import Jinja2Templates
 from SQL import fetch_data, check
 from SQL import set as sql_set
 
-SQL_FILES = ["check.sql", "set.sql", "auto.sql"]
+# Centralized SQL file registry for maintainability
+SQL_FILES = {
+    "check": "check.sql",
+    "set": "set.sql",
+    "auto": "auto.sql",
+    "update_wrong_login_day": "update_wrong_login_day.sql",
+}
 
 app = FastAPI(title="ECOS Document Fix Tool")
 
@@ -527,10 +533,10 @@ async def index(request: Request):
 @app.post("/search", response_class=HTMLResponse)
 async def search(request: Request, document: str = Form(...)):
     params = {"document": document}
-    df = fetch_data.get_sql_data(SQL_FILES[0], params)
+    df = fetch_data.get_sql_data(SQL_FILES["check"], params)
     card = build_card_context(df, document)
     # Keep auto search results visible after selecting a document
-    df_auto = fetch_data.get_sql_data("auto.sql")
+    df_auto = fetch_data.get_sql_data(SQL_FILES["auto"])
     auto_results = _extract_documents_list(df_auto)
 
     return templates.TemplateResponse(
@@ -549,7 +555,7 @@ async def search(request: Request, document: str = Form(...)):
 async def fix(request: Request, document: str = Form(...)):
     # Re-run search and validation server-side
     params = {"document": document}
-    df = fetch_data.get_sql_data(SQL_FILES[0], params)
+    df = fetch_data.get_sql_data(SQL_FILES["check"], params)
     card = build_card_context(df, document)
 
     # Default values
@@ -580,11 +586,11 @@ async def fix(request: Request, document: str = Form(...)):
         and card.get("id_to_update")
     ):
         # Use the dedicated update for wrong login day / issue date
-        sql_to_use = "update_wrong_login_day.sql"
+        sql_to_use = SQL_FILES["update_wrong_login_day"]
         post_success_hint = "να γίνει ενημέρωση offline συναλλαγών"
     elif card.get("can_fix") and card.get("id_to_update"):
         # Fallback to normal set.sql
-        sql_to_use = SQL_FILES[1]
+        sql_to_use = SQL_FILES["set"]
 
     if sql_to_use and card.get("id_to_update"):
         affected = sql_set.update(card["id_to_update"], sql_to_use)
@@ -600,7 +606,7 @@ async def fix(request: Request, document: str = Form(...)):
                 # Also show as popup/alert message
                 message = f"{message} — {post_success_hint}"
             # Re-fetch to reflect new status after update
-            df_after = fetch_data.get_sql_data(SQL_FILES[0], params)
+            df_after = fetch_data.get_sql_data(SQL_FILES["check"], params)
             card = build_card_context(df_after, document)
         else:
             message = "Update failed. Please try again."
@@ -615,7 +621,7 @@ async def fix(request: Request, document: str = Form(...)):
             "card": card,
             "message": message,
             # Keep auto search results visible after fix
-            "auto_results": _extract_documents_list(fetch_data.get_sql_data("auto.sql")),
+            "auto_results": _extract_documents_list(fetch_data.get_sql_data(SQL_FILES["auto"])),
         },
     )
 
@@ -623,10 +629,10 @@ async def fix(request: Request, document: str = Form(...)):
 @app.get("/search/{document}", response_class=HTMLResponse)
 async def search_get(request: Request, document: str):
     params = {"document": document}
-    df = fetch_data.get_sql_data("check.sql", params)
+    df = fetch_data.get_sql_data(SQL_FILES["check"], params)
     card = build_card_context(df, document)
     # Keep auto search results visible while viewing a selected document
-    df_auto = fetch_data.get_sql_data("auto.sql")
+    df_auto = fetch_data.get_sql_data(SQL_FILES["auto"])
     auto_results = _extract_documents_list(df_auto)
 
     return templates.TemplateResponse(
@@ -705,7 +711,7 @@ def _extract_documents_list(df):
 @app.get("/refresh", response_class=HTMLResponse)
 async def refresh(request: Request):
     # Run the auto discovery SQL to find candidate documents
-    df = fetch_data.get_sql_data("auto.sql")
+    df = fetch_data.get_sql_data(SQL_FILES["auto"])
     auto_results = _extract_documents_list(df)
 
     return templates.TemplateResponse(

@@ -2,9 +2,9 @@
 
 /* DARK THEME (default) */
 :root[data-theme="dark"]{
-  --bg:#0f172a;          /* slate-900 */
-  --bg2:#0b1220;         /* inner bg for gradients */
-  --panel:#111827;       /* gray-900 */
+  --bg: #070707;          /* slate-900 */
+  --bg2: #00030b;         /* inner bg for gradients */
+  --panel: #00030b;       /* gray-900 */
   --muted:#94a3b8;       /* slate-400 */
   --text:#e5e7eb;        /* gray-200 */
   --primary:#22c55e;     /* green-500 */
@@ -14,13 +14,13 @@
   --ok:#10b981;          /* emerald-500 */
   --info:#60a5fa;        /* blue-400 */
   --danger:#ef4444;      /* red-500 */
-  --card:#0b1220;        /* custom dark */
-  --border:#1f2937;      /* gray-800 */
-  --divider: rgba(255,255,255,0.06);
+  --card: #00030b;        /* custom dark */
+  --border: #00030b;      /* gray-800 */
+  --divider: rgb(207, 9, 9);
   --radius:14px;
-  --header-bg: rgba(15,23,42,0.7);
-  --footer-bg: rgba(2,6,23,0.85);
-  --field-bg:#0a1020;
+  --header-bg: rgb(0, 3, 11);
+  --footer-bg: rgb(0, 3, 11);
+  --field-bg: #00030b;
   --alert-bg: rgba(2,132,199,0.12);
   --alert-border: rgba(56,189,248,0.3);
   --alert-text:#bae6fd;
