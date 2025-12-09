@@ -552,11 +552,54 @@ async def fix(request: Request, document: str = Form(...)):
     df = fetch_data.get_sql_data(SQL_FILES[0], params)
     card = build_card_context(df, document)
 
-    if card["can_fix"] and card["id_to_update"]:
-        affected = sql_set.update(card["id_to_update"], SQL_FILES[1])
+    # Default values
+    message = None
+    affected = 0
+
+    # Special case: AADE IssueDate validation error can be fixed with a different SQL
+    special_error = "Aade Validation Error: IssueDate is invalid, it must be equal with current date"
+    status_text = None
+    try:
+        status_text = (card.get("row") or {}).get("StatusText")
+        status_text = str(status_text).strip() if status_text is not None else None
+    except Exception:
+        status_text = None
+
+    # Evaluate checkpoint pass flags from the card (order is cp1, cp2, cp3)
+    cp_list = card.get("checkpoints") or []
+    cp1_pass = bool(cp_list[0]["pass"]) if len(cp_list) >= 1 else False
+    cp3_pass = bool(cp_list[2]["pass"]) if len(cp_list) >= 3 else False
+
+    # Decide which SQL to use
+    sql_to_use = None
+    post_success_hint = None
+    if (
+        status_text == special_error
+        and cp1_pass
+        and cp3_pass
+        and card.get("id_to_update")
+    ):
+        # Use the dedicated update for wrong login day / issue date
+        sql_to_use = "update_wrong_login_day.sql"
+        post_success_hint = "να γίνει ενημέρωση offline συναλλαγών"
+    elif card.get("can_fix") and card.get("id_to_update"):
+        # Fallback to normal set.sql
+        sql_to_use = SQL_FILES[1]
+
+    if sql_to_use and card.get("id_to_update"):
+        affected = sql_set.update(card["id_to_update"], sql_to_use)
         if affected:
             message = f"Update completed successfully (affected: {affected})."
-            # Optionally, re-fetch to reflect new status
+            if post_success_hint:
+                # Surface the requested hint prominently in the card status area
+                existing = card.get("status_message")
+                hint_msg = post_success_hint
+                card["status_message"] = (
+                    f"{existing} — {hint_msg}" if existing else hint_msg
+                )
+                # Also show as popup/alert message
+                message = f"{message} — {post_success_hint}"
+            # Re-fetch to reflect new status after update
             df_after = fetch_data.get_sql_data(SQL_FILES[0], params)
             card = build_card_context(df_after, document)
         else:
