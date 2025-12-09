@@ -2,7 +2,7 @@
 # - Python slim base
 # - Installs Microsoft ODBC Driver 18 for SQL Server (msodbcsql18)
 # - Installs unixODBC for pyodbc runtime (and -dev for builds when needed)
-# - Runs FastAPI app with Uvicorn on port 8000
+# - Runs FastAPI app with Uvicorn on port 8002
 
 FROM python:3.11-slim-bookworm
 
@@ -39,7 +39,7 @@ RUN pip install --upgrade pip \
        jinja2 \
        pandas
 
-EXPOSE 8000
+EXPOSE 8002
 
 # Default command: run the API
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]

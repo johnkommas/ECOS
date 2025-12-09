@@ -5,12 +5,12 @@ services:
     image: ecos:latest
     container_name: ecos
     ports:
-      - "8000:8000"
+      - "8002:8002"
     env_file:
       - .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/ >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8002/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5

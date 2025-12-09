@@ -3,7 +3,7 @@
 Copy/paste commands adapted for this project.
 
 - Project folder: `/Users/johnkommas/PycharmProjects/ECOS`
-- Service URL: http://localhost:8000
+- Service URL: http://localhost:8002
 
 ---
 
